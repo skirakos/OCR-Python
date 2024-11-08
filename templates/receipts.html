@@ -1,0 +1,33 @@
+<!-- templates/receipts.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Receipts</title>
+</head>
+<body>
+    <h1>Upload a Receipt</h1>
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        <input type="file" name="receipt" accept="image/*" required>
+        <button type="submit">Upload</button>
+    </form>
+
+    <h1>Stored Receipts</h1>
+    <table border="1">
+        <tr>
+            <th>ID</th>
+            <th>Description</th>
+            <th>Amount</th>
+            <th>Date Uploaded</th>
+        </tr>
+        {% for receipt in receipts %}
+        <tr>
+            <td>{{ receipt[0] }}</td>
+            <td>{{ receipt[1] }}</td>
+            <td>{{ receipt[2] }}</td>
+            <td>{{ receipt[3] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

@@ -3,6 +3,7 @@ import pytesseract
 import sqlite3
 from flask import Flask, request, render_template, redirect, url_for
 import os
+import re
 
 app = Flask(__name__)
 
@@ -38,33 +39,75 @@ def process_image(image_path):
     return text
 
 # Parse text to find description and amount
+import re  # Import regex module for better number parsing
+
+# Step 1: Preprocess OCR Output to Correct Common Mistakes
+def preprocess_text(text):
+    # Define a dictionary of common OCR misreadings to correct
+    corrections = {
+        "piease": "please",  # Correcting "piease" to "please"
+        "loand": "loan",     # Example: correcting "loand" to "loan" (if relevant)
+        # Add more common OCR mistakes here
+    }
+    
+    # Apply each correction to the text
+    for wrong, correct in corrections.items():
+        text = text.replace(wrong, correct)
+    
+    return text
+
+# Step 2: Parse Text with Corrected OCR and Keyword Matching
 def parse_text(text):
+    text = preprocess_text(text)  # Correct OCR mistakes
+    
     lines = text.split('\n')
-    description = ""
+    category = "Uncategorized"  # Default category if no match
     amount = None
     
+    # Define categories with keywords
+    categories = {
+        "food": ["burger", "salad", "pie", "drink", "diner", "restaurant"],
+        "clothes": ["shirt", "pants", "jeans", "jacket", "coat", "clothing"],
+        "loan": ["loan", "mortgage", "installment", "credit"],
+        # Add more categories and keywords as needed
+    }
+
     for line in lines:
-        line = line.strip()  # Trim whitespace for cleaner processing
-        print("Processing line:", line)  # Debug: print each line being processed
+        line = line.strip().lower()  # Normalize line for matching
+        print("Processing line:", line)  # Debugging: Print each line
         
-        # Capture the first valid line containing 'total' or 'amount' as a description
-        if "total" in line.lower() and not description:
-            description = line
-        
-        # Look for lines that contain amounts with a dollar sign
-        if "$" in line:
+        # Step 3: Match Categories Using Word Boundaries to Prevent Partial Matches
+        for cat, keywords in categories.items():
+            for keyword in keywords:
+                # Use word boundaries to ensure whole word matching (e.g., 'pie' should not match 'piease')
+                if re.search(r'\b' + re.escape(keyword) + r'\b', line):
+                    category = cat
+                    print(f"Matched keyword: '{keyword}' in line: '{line}'")  # Debugging: Show matched keyword
+                    break  # Stop once a category match is found
+            if category != "Uncategorized":  # If category is set, break out of the outer loop
+                break
+
+        # Step 4: Parse Amount (looking for numbers in lines with total or dollar signs)
+        if "total" in line:
+            match = re.search(r'[\d.,]+', line)  # Find numbers (amount) in the line
+            if match:
+                try:
+                    amount = float(match.group().replace(',', ''))  # Convert to float, removing commas
+                except ValueError:
+                    continue
+
+        # Fallback to find any dollar amounts if "total" line didn't work
+        if amount is None and "$" in line:
             try:
-                # Extract the amount by stripping unwanted characters
-                amount = float(line.replace('$', '').strip())
+                match = re.search(r'\$[\d.,]+', line)
+                if match:
+                    amount = float(match.group().replace('$', '').replace(',', ''))  # Parse dollar amount
             except ValueError:
                 continue
-    
-    # Default description if nothing matched
-    if not description and amount:
-        description = "Total Amount"
-    
-    print(f"Parsed description: {description}, Parsed amount: {amount}")  # Debug: print parsed values
-    return description, amount
+
+    # Final debug print
+    print(f"Parsed category: {category}, Parsed amount: {amount}")
+    return category, amount
 
 # Insert data into SQLite
 def insert_data(description, amount):

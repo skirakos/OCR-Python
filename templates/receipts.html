@@ -3,31 +3,40 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Receipts</title>
 </head>
 <body>
-    <h1>Upload a Receipt</h1>
-    <form action="/upload" method="post" enctype="multipart/form-data">
-        <input type="file" name="receipt" accept="image/*" required>
-        <button type="submit">Upload</button>
-    </form>
+    <h1>Your Receipts</h1>
 
-    <h1>Stored Receipts</h1>
-    <table border="1">
+    <!-- Show uploaded receipts -->
+    <table>
         <tr>
-            <th>ID</th>
             <th>Description</th>
             <th>Amount</th>
             <th>Date Uploaded</th>
         </tr>
         {% for receipt in receipts %}
         <tr>
-            <td>{{ receipt[0] }}</td>
-            <td>{{ receipt[1] }}</td>
-            <td>{{ receipt[2] }}</td>
-            <td>{{ receipt[3] }}</td>
+            <td>{{ receipt[2] }}</td>  <!-- purchase_description -->
+            <td>{{ receipt[3] }}</td>  <!-- amount -->
+            <td>{{ receipt[4] }}</td>  <!-- date_uploaded -->
         </tr>
         {% endfor %}
     </table>
+
+    <!-- Upload receipt form -->
+    <h2>Upload New Receipt</h2>
+    <form action="{{ url_for('upload_image') }}" method="POST" enctype="multipart/form-data">
+        <label for="receipt">Choose a receipt image to upload:</label>
+        <input type="file" name="receipt" id="receipt" required>
+        <button type="submit">Upload Receipt</button>
+    </form>
+
+    <!-- Log out button -->
+    <form action="{{ url_for('logout') }}" method="POST">
+        <button type="submit">Log Out</button>
+    </form>
+
 </body>
 </html>

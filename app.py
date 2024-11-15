@@ -1,154 +1,192 @@
 import cv2
 import pytesseract
 import sqlite3
-from flask import Flask, request, render_template, redirect, url_for
+from flask import Flask, request, render_template, redirect, url_for, session, flash
+from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import re
 
 app = Flask(__name__)
+app.secret_key = 'your_secret_key_here'  # Replace with a strong, unique secret key
 
-# Define the database path using an absolute path for consistency
-DB_PATH = os.path.join(os.path.dirname(__file__), 'receipts.db')
+# Define the database path
+def get_db_path(username):
+    # Each user gets their own database file
+    return os.path.join(os.path.dirname(__file__), f'{username}_receipts.db')
 
-# Create database table if it doesn't exist
-def create_tables():
-    conn = sqlite3.connect(DB_PATH)
+# Create database tables if they don't exist
+def create_tables(db_path):
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
+    cursor.execute('''CREATE TABLE IF NOT EXISTS users (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        username TEXT UNIQUE NOT NULL,
+                        password TEXT NOT NULL)''')
     cursor.execute('''CREATE TABLE IF NOT EXISTS receipts (
                         id INTEGER PRIMARY KEY,
+                        user_id INTEGER,
                         purchase_description TEXT,
                         amount REAL,
-                        date_uploaded TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
+                        date_uploaded TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users (id))''')
     conn.commit()
     conn.close()
 
-create_tables()
-
 # Process uploaded image to extract text
 def process_image(image_path):
-    # Load image and convert to grayscale
     img = cv2.imread(image_path)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    
-    # Apply thresholding for better OCR results
     _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY_INV)
-    
-    # Use Tesseract to extract text
     text = pytesseract.image_to_string(thresh)
-    print("Extracted text:", text)  # Debug: print the extracted text
     return text
 
 # Parse text to find description and amount
-import re  # Import regex module for better number parsing
-
-# Step 1: Preprocess OCR Output to Correct Common Mistakes
 def preprocess_text(text):
-    # Define a dictionary of common OCR misreadings to correct
     corrections = {
-        "piease": "please",  # Correcting "piease" to "please"
-        "loand": "loan",     # Example: correcting "loand" to "loan" (if relevant)
-        # Add more common OCR mistakes here
+        "piease": "please",
+        "loand": "loan",
     }
-    
-    # Apply each correction to the text
     for wrong, correct in corrections.items():
         text = text.replace(wrong, correct)
-    
     return text
 
-# Step 2: Parse Text with Corrected OCR and Keyword Matching
 def parse_text(text):
-    text = preprocess_text(text)  # Correct OCR mistakes
-    
+    text = preprocess_text(text)
     lines = text.split('\n')
-    category = "Uncategorized"  # Default category if no match
+    category = "Uncategorized"
     amount = None
-    
-    # Define categories with keywords
     categories = {
         "food": ["burger", "salad", "pie", "drink", "diner", "restaurant"],
         "clothes": ["shirt", "pants", "jeans", "jacket", "coat", "clothing"],
         "loan": ["loan", "mortgage", "installment", "credit"],
-        # Add more categories and keywords as needed
     }
 
     for line in lines:
-        line = line.strip().lower()  # Normalize line for matching
-        print("Processing line:", line)  # Debugging: Print each line
-        
-        # Step 3: Match Categories Using Word Boundaries to Prevent Partial Matches
+        line = line.strip().lower()
         for cat, keywords in categories.items():
             for keyword in keywords:
-                # Use word boundaries to ensure whole word matching (e.g., 'pie' should not match 'piease')
                 if re.search(r'\b' + re.escape(keyword) + r'\b', line):
                     category = cat
-                    print(f"Matched keyword: '{keyword}' in line: '{line}'")  # Debugging: Show matched keyword
-                    break  # Stop once a category match is found
-            if category != "Uncategorized":  # If category is set, break out of the outer loop
+                    break
+            if category != "Uncategorized":
                 break
-
-        # Step 4: Parse Amount (looking for numbers in lines with total or dollar signs)
         if "total" in line:
-            match = re.search(r'[\d.,]+', line)  # Find numbers (amount) in the line
+            match = re.search(r'[\d.,]+', line)
             if match:
                 try:
-                    amount = float(match.group().replace(',', ''))  # Convert to float, removing commas
+                    amount = float(match.group().replace(',', ''))
                 except ValueError:
                     continue
-
-        # Fallback to find any dollar amounts if "total" line didn't work
         if amount is None and "$" in line:
             try:
                 match = re.search(r'\$[\d.,]+', line)
                 if match:
-                    amount = float(match.group().replace('$', '').replace(',', ''))  # Parse dollar amount
+                    amount = float(match.group().replace('$', '').replace(',', ''))
             except ValueError:
                 continue
 
-    # Final debug print
-    print(f"Parsed category: {category}, Parsed amount: {amount}")
     return category, amount
 
 # Insert data into SQLite
-def insert_data(description, amount):
+def insert_data(db_path, user_id, description, amount):
     if not description or amount is None:
-        print("Invalid data: Skipping insertion")  # Debug: print if data is invalid
         return
-    print(f"Inserting data: {description}, {amount}")  # Debug: print data before insertion
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO receipts (purchase_description, amount) VALUES (?, ?)", (description, amount))
+    cursor.execute("INSERT INTO receipts (user_id, purchase_description, amount) VALUES (?, ?, ?)", (user_id, description, amount))
     conn.commit()
     conn.close()
+
+# Routes for sign up and sign in
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        hashed_password = generate_password_hash(password)  # Use default hashing method
+
+        db_path = get_db_path(username)
+        create_tables(db_path)
+
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        try:
+            cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed_password))
+            conn.commit()
+            flash('User registered successfully! You can now log in.', 'success')
+            return redirect(url_for('login'))
+        except sqlite3.IntegrityError:
+            flash('Username already exists. Please choose a different one.', 'danger')
+        finally:
+            conn.close()
+
+    return render_template('signup.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+
+        db_path = get_db_path(username)
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
+        user = cursor.fetchone()
+        conn.close()
+
+        if user and check_password_hash(user[2], password):
+            session['user_id'] = user[0]
+            session['username'] = user[1]
+            session['db_path'] = db_path
+            flash('Logged in successfully!', 'success')
+            return redirect(url_for('display_receipts'))
+        else:
+            flash('Invalid username or password.', 'danger')
+
+    return render_template('login.html')
+
+@app.route('/logout', methods=['POST'])
+def logout():
+    session.clear()  # Clears the session
+    flash('Logged out successfully.', 'info')
+    return redirect(url_for('login'))
 
 # Upload and process the image
 @app.route('/upload', methods=['POST'])
 def upload_image():
+    if 'user_id' not in session:
+        flash('Please log in to upload receipts.', 'warning')
+        return redirect(url_for('login'))
+
+    db_path = session['db_path']
+    user_id = session['user_id']
     file = request.files['receipt']
     file_path = "image.png"
     file.save(file_path)
 
-    print("File saved successfully")  # Debug: confirm file save
     text = process_image(file_path)
     description, amount = parse_text(text)
 
     if description and amount:
-        print("Data ready for insertion:", description, amount)  # Debug: confirm data is ready for insertion
-        insert_data(description, amount)
-    else:
-        print("Failed to parse valid description or amount")  # Debug: print if parsing fails
-    
+        insert_data(db_path, user_id, description, amount)
+
     return redirect(url_for('display_receipts'))
 
 # Display stored receipts
 @app.route('/')
 def display_receipts():
-    conn = sqlite3.connect(DB_PATH)
+    if 'user_id' not in session:
+        flash('Please log in to view your receipts.', 'warning')
+        return redirect(url_for('login'))
+
+    db_path = session['db_path']
+    user_id = session['user_id']
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM receipts")
+    cursor.execute("SELECT * FROM receipts WHERE user_id = ?", (user_id,))
     receipts = cursor.fetchall()
     conn.close()
-    print("Receipts to render:", receipts)  # Debug: print receipts fetched from DB
     return render_template('receipts.html', receipts=receipts)
 
 # Run the app

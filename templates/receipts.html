@@ -8,7 +8,8 @@
 </head>
 <body>
     <h1>Your Receipts</h1>
-
+    <!-- Download button for Excel file -->
+    <a href="{{ url_for('download_receipts') }}" class="btn btn-primary">Download Receipts as Excel</a>
     <!-- Show uploaded receipts -->
     <table>
         <tr>

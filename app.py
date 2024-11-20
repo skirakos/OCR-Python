@@ -5,6 +5,8 @@ from flask import Flask, request, render_template, redirect, url_for, session, f
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import re
+import pandas as pd
+from flask import send_file
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'  # Replace with a strong, unique secret key
@@ -172,6 +174,28 @@ def upload_image():
         insert_data(db_path, user_id, description, amount)
 
     return redirect(url_for('display_receipts'))
+
+@app.route('/download_receipts', methods=['GET'])
+def download_receipts():
+    if 'user_id' not in session:
+        flash('Please log in to download your receipts.', 'warning')
+        return redirect(url_for('login'))
+
+    db_path = session['db_path']
+    user_id = session['user_id']
+    
+    # Fetch receipts from the database
+    conn = sqlite3.connect(db_path)
+    query = "SELECT purchase_description, amount, date_uploaded FROM receipts WHERE user_id = ?"
+    receipts = pd.read_sql_query(query, conn, params=(user_id,))
+    conn.close()
+
+    # Convert to Excel file
+    file_path = "receipts.xlsx"
+    receipts.to_excel(file_path, index=False, engine='openpyxl')  # Save as Excel file
+
+    # Send the file as a download response
+    return send_file(file_path, as_attachment=True)
 
 # Display stored receipts
 @app.route('/')

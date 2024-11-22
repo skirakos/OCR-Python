@@ -7,6 +7,9 @@ import os
 import re
 import pandas as pd
 from flask import send_file
+import datetime
+from reportlab.pdfgen import canvas
+from io import BytesIO
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'  # Replace with a strong, unique secret key
@@ -212,6 +215,69 @@ def display_receipts():
     receipts = cursor.fetchall()
     conn.close()
     return render_template('receipts.html', receipts=receipts)
+
+@app.route('/generate_invoice', methods=['POST'])
+def generate_invoice():
+    # Fetch data from form
+    client_name = request.form.get("client_name")
+    client_address = request.form.get("client_address")
+    invoice_date = request.form.get("invoice_date", datetime.date.today().strftime("%Y-%m-%d"))
+    due_date = request.form.get("due_date", "")
+    invoice_number = request.form.get("invoice_number")
+    tax_rate = float(request.form.get("tax_rate", 0))
+    subtotal = float(request.form.get("subtotal", 0))
+    tax = float(request.form.get("tax", 0))
+    grand_total = float(request.form.get("grand_total", 0))
+    descriptions = request.form.getlist("description[]")
+    quantities = request.form.getlist("quantity[]")
+    unit_prices = request.form.getlist("unit_price[]")
+    item_totals = request.form.getlist("item_total[]")
+
+    # Create a PDF in memory
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer)
+    pdf.setTitle(f"Invoice {invoice_number}")
+
+    # Invoice Header
+    pdf.setFont("Helvetica-Bold", 16)
+    pdf.drawString(100, 750, f"Invoice #{invoice_number}")
+    pdf.setFont("Helvetica", 12)
+    pdf.drawString(100, 730, f"Client: {client_name}")
+    pdf.drawString(100, 710, f"Address: {client_address}")
+    pdf.drawString(100, 690, f"Date: {invoice_date}")
+    pdf.drawString(100, 670, f"Due Date: {due_date}")
+
+    # Table Header
+    y = 640
+    pdf.drawString(100, y, "Description")
+    pdf.drawString(300, y, "Qty")
+    pdf.drawString(350, y, "Unit Price")
+    pdf.drawString(450, y, "Total")
+    y -= 20
+
+    # Table Items
+    for desc, qty, unit, total in zip(descriptions, quantities, unit_prices, item_totals):
+        pdf.drawString(100, y, desc)
+        pdf.drawString(300, y, qty)
+        pdf.drawString(350, y, f"${unit}")
+        pdf.drawString(450, y, f"${total}")
+        y -= 20
+
+    # Totals
+    pdf.drawString(100, y - 20, f"Subtotal: ${subtotal}")
+    pdf.drawString(100, y - 40, f"Tax ({tax_rate}%): ${tax}")
+    pdf.drawString(100, y - 60, f"Grand Total: ${grand_total}")
+
+    pdf.save()
+    buffer.seek(0)
+
+    # Serve the PDF
+    return send_file(buffer, as_attachment=True, download_name=f"invoice_{invoice_number}.pdf", mimetype="application/pdf")
+
+@app.route('/invoice_form', methods=['GET'])
+def invoice_form():
+    # This renders the `generate_invoice.html` form.
+    return render_template('generate_invoice.html')
 
 # Run the app
 if __name__ == "__main__":

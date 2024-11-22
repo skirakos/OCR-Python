@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 10px;
+            text-align: center;
+        }
+        input, button {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Invoice Generator</h1>
+    <form id="invoice_form" action="{{ url_for('generate_invoice') }}" method="POST">
+        <!-- Client Details -->
+        <h2>Client Details</h2>
+        <label for="client_name">Client Name:</label>
+        <input type="text" id="client_name" name="client_name" required><br>
+        <label for="client_address">Client Address:</label>
+        <input type="text" id="client_address" name="client_address" required><br>
+        <label for="invoice_date">Invoice Date:</label>
+        <input type="date" id="invoice_date" name="invoice_date" required><br>
+        <label for="due_date">Due Date:</label>
+        <input type="date" id="due_date" name="due_date"><br>
+        <label for="invoice_number">Invoice Number:</label>
+        <input type="text" id="invoice_number" name="invoice_number" required><br>
+
+        <!-- Invoice Items -->
+        <h2>Invoice Items</h2>
+        <table id="itemsTable">
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th>Quantity</th>
+                    <th>Unit Price</th>
+                    <th>Total</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+        <button type="button" onclick="addItem()">Add Item</button>
+
+        <!-- Totals -->
+        <h2>Totals</h2>
+        <label for="tax_rate">Tax Rate (%):</label>
+        <input type="number" id="tax_rate" name="tax_rate" value="10"><br>
+        <label for="subtotal">Subtotal:</label>
+        <input type="text" id="subtotal" name="subtotal" readonly><br>
+        <label for="tax">Tax:</label>
+        <input type="text" id="tax" name="tax" readonly><br>
+        <label for="grand_total">Grand Total:</label>
+        <input type="text" id="grand_total" name="grand_total" readonly><br>
+
+        <!-- Submit -->
+        <button type="submit">Generate PDF Invoice</button>
+    </form>
+
+    <script>
+        // Function to add an item row
+        function addItem() {
+            const table = document.getElementById("itemsTable").getElementsByTagName("tbody")[0];
+            const newRow = table.insertRow();
+            newRow.innerHTML = `
+                <td><input type="text" name="description[]" required></td>
+                <td><input type="number" name="quantity[]" value="1" required oninput="updateTotals()"></td>
+                <td><input type="number" name="unit_price[]" value="0" step="0.01" required oninput="updateTotals()"></td>
+                <td><input type="text" name="item_total[]" readonly></td>
+                <td><button type="button" onclick="removeItem(this)">Remove</button></td>
+            `;
+        }
+
+        // Function to remove an item row
+        function removeItem(button) {
+            const row = button.parentNode.parentNode;
+            row.parentNode.removeChild(row);
+            updateTotals();
+        }
+
+        // Function to update totals dynamically
+        function updateTotals() {
+            let subtotal = 0;
+            const rows = document.querySelectorAll("#itemsTable tbody tr");
+            rows.forEach(row => {
+                const quantity = parseFloat(row.querySelector("input[name='quantity[]']").value) || 0;
+                const unitPrice = parseFloat(row.querySelector("input[name='unit_price[]']").value) || 0;
+                const total = quantity * unitPrice;
+                row.querySelector("input[name='item_total[]']").value = total.toFixed(2);
+                subtotal += total;
+            });
+
+            const taxRate = parseFloat(document.getElementById("tax_rate").value) || 0;
+            const tax = (subtotal * taxRate) / 100;
+            const grandTotal = subtotal + tax;
+
+            document.getElementById("subtotal").value = subtotal.toFixed(2);
+            document.getElementById("tax").value = tax.toFixed(2);
+            document.getElementById("grand_total").value = grandTotal.toFixed(2);
+        }
+    </script>
+</body>
+</html>

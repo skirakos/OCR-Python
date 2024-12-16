@@ -12,14 +12,12 @@ from reportlab.pdfgen import canvas
 from io import BytesIO
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key_here'  # Replace with a strong, unique secret key
+app.secret_key = 'your_secret_key_here'
 
-# Define the database path
 def get_db_path(username):
     # Each user gets their own database file
     return os.path.join(os.path.dirname(__file__), f'{username}_receipts.db')
 
-# Create database tables if they don't exist
 def create_tables(db_path):
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
@@ -153,11 +151,10 @@ def login():
 
 @app.route('/logout', methods=['POST'])
 def logout():
-    session.clear()  # Clears the session
+    session.clear()
     flash('Logged out successfully.', 'info')
     return redirect(url_for('login'))
 
-# Upload and process the image
 @app.route('/upload', methods=['POST'])
 def upload_image():
     if 'user_id' not in session:
@@ -187,7 +184,6 @@ def download_receipts():
     db_path = session['db_path']
     user_id = session['user_id']
     
-    # Fetch receipts from the database
     conn = sqlite3.connect(db_path)
     query = "SELECT purchase_description, amount, date_uploaded FROM receipts WHERE user_id = ?"
     receipts = pd.read_sql_query(query, conn, params=(user_id,))
@@ -197,7 +193,6 @@ def download_receipts():
     file_path = "receipts.xlsx"
     receipts.to_excel(file_path, index=False, engine='openpyxl')  # Save as Excel file
 
-    # Send the file as a download response
     return send_file(file_path, as_attachment=True)
 
 # Display stored receipts
@@ -218,7 +213,6 @@ def display_receipts():
 
 @app.route('/generate_invoice', methods=['POST'])
 def generate_invoice():
-    # Fetch data from form
     client_name = request.form.get("client_name")
     client_address = request.form.get("client_address")
     invoice_date = request.form.get("invoice_date", datetime.date.today().strftime("%Y-%m-%d"))
@@ -233,12 +227,10 @@ def generate_invoice():
     unit_prices = request.form.getlist("unit_price[]")
     item_totals = request.form.getlist("item_total[]")
 
-    # Create a PDF in memory
     buffer = BytesIO()
     pdf = canvas.Canvas(buffer)
     pdf.setTitle(f"Invoice {invoice_number}")
 
-    # Invoice Header
     pdf.setFont("Helvetica-Bold", 16)
     pdf.drawString(100, 750, f"Invoice #{invoice_number}")
     pdf.setFont("Helvetica", 12)
@@ -247,7 +239,6 @@ def generate_invoice():
     pdf.drawString(100, 690, f"Date: {invoice_date}")
     pdf.drawString(100, 670, f"Due Date: {due_date}")
 
-    # Table Header
     y = 640
     pdf.drawString(100, y, "Description")
     pdf.drawString(300, y, "Qty")
@@ -255,7 +246,6 @@ def generate_invoice():
     pdf.drawString(450, y, "Total")
     y -= 20
 
-    # Table Items
     for desc, qty, unit, total in zip(descriptions, quantities, unit_prices, item_totals):
         pdf.drawString(100, y, desc)
         pdf.drawString(300, y, qty)
@@ -263,7 +253,6 @@ def generate_invoice():
         pdf.drawString(450, y, f"${total}")
         y -= 20
 
-    # Totals
     pdf.drawString(100, y - 20, f"Subtotal: ${subtotal}")
     pdf.drawString(100, y - 40, f"Tax ({tax_rate}%): ${tax}")
     pdf.drawString(100, y - 60, f"Grand Total: ${grand_total}")
@@ -271,14 +260,11 @@ def generate_invoice():
     pdf.save()
     buffer.seek(0)
 
-    # Serve the PDF
     return send_file(buffer, as_attachment=True, download_name=f"invoice_{invoice_number}.pdf", mimetype="application/pdf")
 
 @app.route('/invoice_form', methods=['GET'])
 def invoice_form():
-    # This renders the `generate_invoice.html` form.
     return render_template('generate_invoice.html')
 
-# Run the app
 if __name__ == "__main__":
     app.run(debug=True)

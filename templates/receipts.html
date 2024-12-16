@@ -1,16 +1,119 @@
-<!-- templates/receipts.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Receipts</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        /* Global Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: #fff;
+        }
+
+        h1, h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        /* Table Styles */
+        table {
+            width: 100%;
+            max-width: 800px;
+            margin: 20px auto;
+            border-collapse: collapse;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        table th, table td {
+            padding: 15px;
+            text-align: left;
+            color: #fff;
+        }
+
+        table th {
+            background: rgba(255, 255, 255, 0.3);
+            font-weight: 600;
+        }
+
+        table tr:nth-child(even) {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Form and Button Styles */
+        form, .btn {
+            text-align: center;
+            margin: 20px auto;
+            max-width: 800px;
+        }
+
+        form label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        form input[type="file"] {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 15px;
+            background: rgba(255, 255, 255, 0.8);
+            color: #333;
+        }
+
+        form button, .btn {
+            display: inline-block;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #ff416c, #ff4b2b);
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            text-decoration: none;
+        }
+
+        form button:hover, .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 20px rgba(255, 75, 43, 0.6);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            table, form {
+                width: 90%;
+            }
+        }
+    </style>
 </head>
 <body>
     <h1>Your Receipts</h1>
-    <!-- Download button for Excel file -->
-    <a href="{{ url_for('download_receipts') }}" class="btn btn-primary">Download Receipts as Excel</a>
-    <!-- Show uploaded receipts -->
+
+    <!-- Download button -->
+    <a href="{{ url_for('download_receipts') }}" class="btn">Download Receipts as Excel</a>
+
+    <!-- Receipts table -->
     <table>
         <tr>
             <th>Description</th>
@@ -34,12 +137,12 @@
         <button type="submit">Upload Receipt</button>
     </form>
 
+    <!-- Generate Invoice -->
+    <a href="{{ url_for('invoice_form') }}" class="btn">Generate Invoice</a>
+
     <!-- Log out button -->
     <form action="{{ url_for('logout') }}" method="POST">
         <button type="submit">Log Out</button>
     </form>
-
-    <a href="{{ url_for('invoice_form') }}" class="btn btn-primary">Generate Invoice</a>
-
 </body>
 </html>

@@ -4,25 +4,115 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Invoice Generator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
+        /* Global Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: #fff;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        h1, h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        form {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            width: 100%;
+            max-width: 900px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        label {
+            display: block;
+            font-weight: 500;
+            margin: 10px 0 5px;
+        }
+
+        input[type="text"], input[type="number"], input[type="date"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.8);
+            color: #333;
+            font-size: 14px;
+        }
+
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #ff416c, #ff4b2b);
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 20px rgba(255, 75, 43, 0.6);
+        }
+
         table {
             width: 100%;
+            margin: 20px 0;
             border-collapse: collapse;
-            margin-top: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
         }
-        table, th, td {
-            border: 1px solid #ddd;
-        }
-        th, td {
-            padding: 10px;
+
+        table th, table td {
+            padding: 15px;
             text-align: center;
+            color: #fff;
         }
-        input, button {
-            margin: 5px 0;
+
+        table th {
+            background: rgba(255, 255, 255, 0.3);
+            font-weight: 600;
+        }
+
+        table tr:nth-child(even) {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        input[type="text"][readonly], input[type="number"][readonly] {
+            background: rgba(255, 255, 255, 0.3);
+            color: #fff;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 768px) {
+            form {
+                padding: 15px;
+            }
+
+            input[type="text"], input[type="number"], input[type="date"] {
+                font-size: 12px;
+            }
         }
     </style>
 </head>
@@ -32,15 +122,15 @@
         <!-- Client Details -->
         <h2>Client Details</h2>
         <label for="client_name">Client Name:</label>
-        <input type="text" id="client_name" name="client_name" required><br>
+        <input type="text" id="client_name" name="client_name" required>
         <label for="client_address">Client Address:</label>
-        <input type="text" id="client_address" name="client_address" required><br>
+        <input type="text" id="client_address" name="client_address" required>
         <label for="invoice_date">Invoice Date:</label>
-        <input type="date" id="invoice_date" name="invoice_date" required><br>
+        <input type="date" id="invoice_date" name="invoice_date" required>
         <label for="due_date">Due Date:</label>
-        <input type="date" id="due_date" name="due_date"><br>
+        <input type="date" id="due_date" name="due_date">
         <label for="invoice_number">Invoice Number:</label>
-        <input type="text" id="invoice_number" name="invoice_number" required><br>
+        <input type="text" id="invoice_number" name="invoice_number" required>
 
         <!-- Invoice Items -->
         <h2>Invoice Items</h2>
@@ -62,13 +152,13 @@
         <!-- Totals -->
         <h2>Totals</h2>
         <label for="tax_rate">Tax Rate (%):</label>
-        <input type="number" id="tax_rate" name="tax_rate" value="10"><br>
+        <input type="number" id="tax_rate" name="tax_rate" value="10" oninput="updateTotals()">
         <label for="subtotal">Subtotal:</label>
-        <input type="text" id="subtotal" name="subtotal" readonly><br>
+        <input type="text" id="subtotal" name="subtotal" readonly>
         <label for="tax">Tax:</label>
-        <input type="text" id="tax" name="tax" readonly><br>
+        <input type="text" id="tax" name="tax" readonly>
         <label for="grand_total">Grand Total:</label>
-        <input type="text" id="grand_total" name="grand_total" readonly><br>
+        <input type="text" id="grand_total" name="grand_total" readonly>
 
         <!-- Submit -->
         <button type="submit">Generate PDF Invoice</button>

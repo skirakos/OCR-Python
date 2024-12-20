@@ -59,7 +59,7 @@ def parse_text(text):
     category = "Uncategorized"
     amount = None
     categories = {
-        "food": ["burger", "salad", "pie", "drink", "diner", "restaurant"],
+        "food": ["burger", "salad", "pie", "drink", "diner", "restaurant", "Desserts", "Soda"],
         "clothes": ["shirt", "pants", "jeans", "jacket", "coat", "clothing"],
         "loan": ["loan", "mortgage", "installment", "credit"],
     }
@@ -148,6 +148,25 @@ def login():
             flash('Invalid username or password.', 'danger')
 
     return render_template('login.html')
+
+@app.route('/delete_receipt/<int:receipt_id>', methods=['POST'])
+def delete_receipt(receipt_id):
+    if 'user_id' not in session:
+        flash('Please log in to delete receipts.', 'warning')
+        return redirect(url_for('login'))
+
+    db_path = session['db_path']
+    user_id = session['user_id']
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    # Delete the receipt with the given receipt ID and user ID
+    cursor.execute("DELETE FROM receipts WHERE id = ? AND user_id = ?", (receipt_id, user_id))
+    conn.commit()
+    conn.close()
+
+    flash('Receipt deleted successfully.', 'success')
+    return redirect(url_for('display_receipts'))
 
 @app.route('/logout', methods=['POST'])
 def logout():

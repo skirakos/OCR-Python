@@ -6,7 +6,6 @@
     <title>Receipts</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
-        /* Global Styles */
         * {
             margin: 0;
             padding: 0;
@@ -29,7 +28,6 @@
             margin-bottom: 20px;
         }
 
-        /* Table Styles */
         table {
             width: 100%;
             max-width: 800px;
@@ -99,7 +97,6 @@
             box-shadow: 0 10px 20px rgba(255, 75, 43, 0.6);
         }
 
-        /* Responsive Design */
         @media (max-width: 768px) {
             table, form {
                 width: 90%;
@@ -110,26 +107,29 @@
 <body>
     <h1>Your Receipts</h1>
 
-    <!-- Download button -->
     <a href="{{ url_for('download_receipts') }}" class="btn">Download Receipts as Excel</a>
 
-    <!-- Receipts table -->
     <table>
         <tr>
             <th>Description</th>
             <th>Amount</th>
             <th>Date Uploaded</th>
+            <th>Actions</th>
         </tr>
         {% for receipt in receipts %}
         <tr>
-            <td>{{ receipt[2] }}</td>  <!-- purchase_description -->
-            <td>{{ receipt[3] }}</td>  <!-- amount -->
-            <td>{{ receipt[4] }}</td>  <!-- date_uploaded -->
+            <td>{{ receipt[2] }}</td>
+            <td>{{ receipt[3] }}</td>
+            <td>{{ receipt[4] }}</td>
+            <td>
+                <form action="{{ url_for('delete_receipt', receipt_id=receipt[0]) }}" method="POST" style="display:inline;">
+                    <button type="submit" class="btn" style="background: #ff4b2b;">Delete</button>
+                </form>
+            </td>
         </tr>
         {% endfor %}
     </table>
 
-    <!-- Upload receipt form -->
     <h2>Upload New Receipt</h2>
     <form action="{{ url_for('upload_image') }}" method="POST" enctype="multipart/form-data">
         <label for="receipt">Choose a receipt image to upload:</label>
@@ -137,10 +137,8 @@
         <button type="submit">Upload Receipt</button>
     </form>
 
-    <!-- Generate Invoice -->
     <a href="{{ url_for('invoice_form') }}" class="btn">Generate Invoice</a>
 
-    <!-- Log out button -->
     <form action="{{ url_for('logout') }}" method="POST">
         <button type="submit">Log Out</button>
     </form>
